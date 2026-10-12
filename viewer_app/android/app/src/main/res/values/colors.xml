@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Mismo fondo que el intro de Flutter (ver lib/shared/widgets/intro_screen.dart)
+         para que no haya un parpadeo blanco entre el splash nativo y el primer frame. -->
+    <color name="launch_background">#FF0A0A0E</color>
+	<color name="ic_launcher_background">#FFFFFF</color>
+</resources>

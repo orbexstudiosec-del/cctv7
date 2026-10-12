@@ -1,0 +1,53 @@
+import 'package:flutter/material.dart';
+
+/// Marca pública de un tenant (lo que vive en `tenantsPublic/{slug}`):
+/// nombre, logo y colores a aplicar al panel antes incluso de iniciar
+/// sesión. Ver docs/ARCHITECTURE.md sección 2 y 5.
+class TenantBranding {
+  const TenantBranding({
+    required this.tenantId,
+    required this.slug,
+    required this.appName,
+    required this.primaryColor,
+    required this.secondaryColor,
+    this.logoUrl,
+    this.logoOnColorUrl,
+    this.faviconUrl,
+  });
+
+  final String tenantId;
+  final String slug;
+  final String appName;
+  final Color primaryColor;
+  final Color secondaryColor;
+  final String? logoUrl;
+
+  /// Variante del logo (blanco/monocromática) pensada para fondos de color
+  /// de marca (degradé) — el logo a todo color pierde contraste ahí. Si no
+  /// existe, usar [logoUrl] como respaldo.
+  final String? logoOnColorUrl;
+  final String? faviconUrl;
+
+  factory TenantBranding.fromFirestore(String slug, Map<String, dynamic> data) {
+    return TenantBranding(
+      tenantId: data['tenantId'] as String,
+      slug: slug,
+      appName: data['appName'] as String? ?? slug,
+      primaryColor: _colorFromHex(data['primaryColor'] as String? ?? '#1A73E8'),
+      secondaryColor:
+          _colorFromHex(data['secondaryColor'] as String? ?? '#F5A623'),
+      logoUrl: data['logoUrl'] as String?,
+      logoOnColorUrl: data['logoOnColorUrl'] as String?,
+      faviconUrl: data['faviconUrl'] as String?,
+    );
+  }
+
+  /// Para usar sobre el degradé de marca: cae a [logoUrl] si todavía no se
+  /// subió una variante blanca.
+  String? get logoForBrandBackground => logoOnColorUrl ?? logoUrl;
+
+  static Color _colorFromHex(String hex) {
+    final value = hex.replaceAll('#', '');
+    return Color(int.parse('FF$value', radix: 16));
+  }
+}

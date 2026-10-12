@@ -1,0 +1,16 @@
+# Nunca subir esto: es la llave de administrador de todo el proyecto Firebase.
+scripts/serviceAccountKey.json
+
+# Build / dependencias
+functions/node_modules/
+functions/lib/
+scripts/node_modules/
+
+# Secretos locales
+functions/.env
+
+# Local / debug
+.firebaserc
+firebase-debug*.log
+ui-debug.log
+.runtimeconfig.json

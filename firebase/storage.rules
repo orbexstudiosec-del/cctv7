@@ -1,0 +1,50 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function claims() {
+      return request.auth.token;
+    }
+
+    function isSuperAdmin() {
+      return isSignedIn() && claims().role == 'super_admin';
+    }
+
+    function isTenantAdmin(tenantId) {
+      return isSignedIn()
+        && claims().tenant_id == tenantId
+        && claims().role == 'tenant_admin';
+    }
+
+    function isTenantStaff(tenantId) {
+      return isSignedIn()
+        && claims().tenant_id == tenantId
+        && (claims().role == 'tenant_admin' || claims().role == 'editor');
+    }
+
+    // Logo / favicon: lectura pública (se muestran antes del login),
+    // escritura solo del admin de ese tenant.
+    match /tenants/{tenantId}/branding/{fileName} {
+      allow read: if true;
+      allow write: if isSuperAdmin() || isTenantAdmin(tenantId);
+    }
+
+    // Miniaturas de streams: lectura pública (se ven en la app),
+    // escritura del staff del tenant (admin o editor).
+    match /tenants/{tenantId}/streams/{streamId}/{fileName} {
+      allow read: if true;
+      allow write: if isSuperAdmin() || isTenantStaff(tenantId);
+    }
+
+    // Imágenes de noticias: lectura pública, escritura del staff del tenant.
+    match /tenants/{tenantId}/news/{fileName} {
+      allow read: if true;
+      allow write: if isSuperAdmin() || isTenantStaff(tenantId);
+    }
+  }
+}

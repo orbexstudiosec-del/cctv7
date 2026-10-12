@@ -1,0 +1,13 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- Habilita Picture-in-Picture solo en el flavor de celular: al
+             salir de la app (ej. abrir WhatsApp), el video sigue en una
+             ventana flotante en vez de quedar sin reproducir en segundo
+             plano. android:resizeableActivity es requerido por Android
+             para permitir PiP. Ver MainActivity.kt (onUserLeaveHint). -->
+        <activity
+            android:name=".MainActivity"
+            android:supportsPictureInPicture="true"
+            android:resizeableActivity="true" />
+    </application>
+</manifest>

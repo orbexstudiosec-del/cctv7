@@ -1,0 +1,29 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Requisitos de Android TV / Google TV: declara que la app es para
+         TV (sin esto Play Store no la ofrece en tiendas de TV) y que no
+         necesita pantalla táctil (control remoto / D-pad solamente). -->
+    <uses-feature
+        android:name="android.software.leanback"
+        android:required="true" />
+    <uses-feature
+        android:name="android.hardware.touchscreen"
+        android:required="false" />
+
+    <application android:banner="@drawable/tv_banner">
+        <!-- Mismo .MainActivity que el flavor de celular: el merger de
+             manifiestos combina estos atributos con los de
+             src/main/AndroidManifest.xml. Horizontal forzado (el
+             reproductor es lo único que hay, no tiene sentido vertical) y
+             se agrega la categoría LEANBACK_LAUNCHER para aparecer en la
+             fila de apps del launcher de Android TV (se mantiene también
+             LAUNCHER, por si se prueba sideload en un Android normal). -->
+        <activity
+            android:name=".MainActivity"
+            android:screenOrientation="landscape">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

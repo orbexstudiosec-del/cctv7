@@ -1,0 +1,87 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function claims() {
+      return request.auth.token;
+    }
+
+    function isSuperAdmin() {
+      return isSignedIn() && claims().role == 'super_admin';
+    }
+
+    function belongsToTenant(tenantId) {
+      return isSignedIn() && claims().tenant_id == tenantId;
+    }
+
+    function isTenantAdmin(tenantId) {
+      return belongsToTenant(tenantId) && claims().role == 'tenant_admin';
+    }
+
+    function isTenantStaff(tenantId) {
+      return belongsToTenant(tenantId) &&
+        (claims().role == 'tenant_admin' || claims().role == 'editor');
+    }
+
+    // Marca pública por tenant (logo/colores). Necesita ser legible SIN auth
+    // porque la pantalla de login se pinta antes de iniciar sesión.
+    // Solo se escribe desde el backend (Cloud Functions con Admin SDK),
+    // nunca directo desde el cliente.
+    match /tenantsPublic/{slug} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Datos internos del tenant (plan, límites, estado de la cuenta).
+    match /tenants/{tenantId} {
+      allow read: if isSuperAdmin() || belongsToTenant(tenantId);
+      allow write: if isSuperAdmin();
+
+      match /streams/{streamId} {
+        // Lectura pública a propósito: la app de espectadores (Android/iOS)
+        // no tiene cuenta de usuario, ver docs/ARCHITECTURE.md. No expone
+        // nada sensible: el enlace de la señal es justamente lo que la app
+        // tiene que poder leer para reproducir.
+        allow read: if true;
+        allow create, update: if isSuperAdmin() || isTenantStaff(tenantId);
+        allow delete: if isSuperAdmin() || isTenantAdmin(tenantId);
+      }
+
+      // Noticias del tenant: las publicadas son de lectura pública a
+      // propósito (la app de espectadores no tiene cuenta); los borradores
+      // (published == false) solo los ve el staff. Una consulta pública
+      // TIENE que filtrar published == true o Firestore la rechaza entera
+      // (ver viewer_app/lib/news/news_repository.dart). Misma jerarquía de
+      // permisos de escritura que los streams.
+      match /news/{newsId} {
+        allow read: if resource.data.published == true
+          || isSuperAdmin() || isTenantStaff(tenantId);
+        allow create, update: if isSuperAdmin() || isTenantStaff(tenantId);
+        allow delete: if isSuperAdmin() || isTenantAdmin(tenantId);
+      }
+
+      // Configuración pública que el staff edita desde el panel (por ahora
+      // solo `social`: links a redes sociales del menú de la app). Aparte
+      // de tenantsPublic a propósito: ese doc sigue sin escritura desde el
+      // cliente.
+      match /settings/{settingId} {
+        allow read: if true;
+        allow write: if isSuperAdmin() || isTenantStaff(tenantId);
+      }
+    }
+
+    // Perfiles de usuario (espejo de los custom claims, para listar en el panel).
+    match /users/{uid} {
+      allow read: if isSuperAdmin()
+        || request.auth.uid == uid
+        || belongsToTenant(resource.data.tenantId);
+      // Solo se escribe vía Cloud Functions (mantiene claims y doc sincronizados).
+      allow write: if false;
+    }
+  }
+}
