@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'channel/channel_screen.dart';
 import 'flavors.dart';
 import 'shared/theme.dart';
+import 'shared/theme_mode.dart';
 import 'shared/widgets/intro_screen.dart';
+import 'stats/usage_tracker.dart';
 import 'tenant/tenant_branding.dart';
 import 'tenant/tenant_repository.dart';
 
@@ -20,11 +22,21 @@ class _ViewerAppState extends State<ViewerApp> {
   @override
   void initState() {
     super.initState();
-    _brandingFuture = _fetchBranding();
+    // La entrada animada se queda al menos 3 s al abrir la app: la carga
+    // suele tardar menos y apenas se alcanzaba a ver.
+    _brandingFuture = Future.wait([
+      _fetchBranding(),
+      Future<void>.delayed(const Duration(seconds: 3)),
+    ]).then((results) => results.first as TenantBranding?);
   }
 
-  Future<TenantBranding?> _fetchBranding() {
-    return TenantRepository().fetchBranding(FlavorConfig.instance.tenantSlug);
+  Future<TenantBranding?> _fetchBranding() async {
+    final branding = await TenantRepository()
+        .fetchBranding(FlavorConfig.instance.tenantSlug);
+    if (branding != null) {
+      UsageTracker.instance.start(branding.tenantId, isTv: false);
+    }
+    return branding;
   }
 
   void _retry() {
@@ -36,12 +48,20 @@ class _ViewerAppState extends State<ViewerApp> {
     return FutureBuilder<TenantBranding?>(
       future: _brandingFuture,
       builder: (context, snapshot) {
-        final defaultTheme = buildViewerTheme(seed: Colors.indigo);
+        final lightTheme = buildViewerTheme(
+          seed: kBrandGreen,
+          secondary: kBrandRed,
+          brightness: Brightness.light,
+        );
+        final darkTheme = buildViewerTheme(seed: kBrandGreen, secondary: kBrandRed);
+        final mode = ThemeModeController.instance.value;
 
         if (snapshot.connectionState != ConnectionState.done) {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
-            theme: defaultTheme,
+            theme: lightTheme,
+            darkTheme: darkTheme,
+            themeMode: mode,
             home: const IntroScreen(),
           );
         }
@@ -49,7 +69,9 @@ class _ViewerAppState extends State<ViewerApp> {
         if (snapshot.hasError || snapshot.data == null) {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
-            theme: defaultTheme,
+            theme: lightTheme,
+            darkTheme: darkTheme,
+            themeMode: mode,
             home: IntroScreen(
               errorMessage: 'No se pudo cargar este cliente. Revisa tu conexión e intenta de nuevo.',
               onRetry: _retry,
@@ -58,14 +80,23 @@ class _ViewerAppState extends State<ViewerApp> {
         }
 
         final branding = snapshot.data!;
-        return MaterialApp(
-          title: branding.appName,
-          debugShowCheckedModeBanner: false,
-          theme: buildViewerTheme(
-            seed: branding.primaryColor,
-            secondary: branding.secondaryColor,
+        return ValueListenableBuilder<ThemeMode>(
+          valueListenable: ThemeModeController.instance,
+          builder: (context, mode, _) => MaterialApp(
+            title: branding.appName,
+            debugShowCheckedModeBanner: false,
+            theme: buildViewerTheme(
+              seed: branding.primaryColor,
+              secondary: branding.secondaryColor,
+              brightness: Brightness.light,
+            ),
+            darkTheme: buildViewerTheme(
+              seed: branding.primaryColor,
+              secondary: branding.secondaryColor,
+            ),
+            themeMode: mode,
+            home: ChannelScreen(branding: branding),
           ),
-          home: ChannelScreen(branding: branding),
         );
       },
     );

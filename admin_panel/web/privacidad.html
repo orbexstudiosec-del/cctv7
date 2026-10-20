@@ -73,7 +73,7 @@
   <header>
     <div class="wrap">
       <h1>Política de Privacidad</h1>
-      <p>Aplicación <strong>CCTV CANAL 7</strong> · Última actualización: 11 de octubre de 2026</p>
+      <p>Aplicación <strong>CCTV CANAL 7</strong> · Última actualización: 20 de octubre de 2026</p>
     </div>
   </header>
 
@@ -82,13 +82,14 @@
       <p class="nota">
         <strong>En resumen:</strong> CCTV CANAL 7 no pide registro, no recopila datos
         personales, no muestra publicidad y no vende ni comparte información de
-        sus usuarios.
+        sus usuarios. Solo lleva un conteo anónimo de cuántas veces se abre la
+        app por día.
       </p>
 
       <h2>1. Quiénes somos</h2>
       <p>
-        Esta política se aplica a la aplicación móvil <strong>CCTV CANAL 7</strong>
-        (en adelante, "la app"), que permite ver en vivo la señal de
+        Esta política se aplica a la aplicación <strong>CCTV CANAL 7</strong>
+        para celulares y Android TV (en adelante, "la app"), que permite ver en vivo la señal de
         <strong>CCTV CANAL 7</strong> y leer sus noticias. El responsable de
         la app es <strong>CCTV CANAL 7</strong>. La app fue desarrollada por
         Orbex Studios.
@@ -98,11 +99,24 @@
       <ul>
         <li>No hay cuentas ni inicio de sesión: no pedimos nombre, correo, teléfono ni contraseña.</li>
         <li>No accedemos a tu ubicación, contactos, fotos, cámara, micrófono ni archivos.</li>
-        <li>No usamos herramientas de analítica, seguimiento ni publicidad.</li>
+        <li>No usamos herramientas de analítica de terceros, seguimiento ni publicidad.</li>
         <li>No creamos perfiles de usuario ni identificamos a quién está viendo el canal.</li>
       </ul>
 
-      <h2>3. Información técnica necesaria para funcionar</h2>
+      <h2>3. Estadísticas anónimas de uso</h2>
+      <p>
+        Para que el canal sepa cuánta audiencia tiene, cada vez que se abre la
+        app se suma 1 a unos contadores por día: número de aperturas, número de
+        equipos distintos que la abrieron ese día, número de primeras aperturas
+        (instalaciones nuevas) y si fue desde un celular o una TV.
+      </p>
+      <ul>
+        <li>Solo se guardan esos totales por día. No se envía ningún identificador del dispositivo, nombre, ubicación ni dirección IP asociada a los totales.</li>
+        <li>Para no contar dos veces el mismo equipo en un día, la app guarda en el propio dispositivo la fecha de la última apertura. Ese dato no sale del dispositivo y se borra al desinstalar la app.</li>
+        <li>Los totales se guardan en Google Firebase (Cloud Firestore) y solo los ve el personal del canal en su panel de administración.</li>
+      </ul>
+
+      <h2>4. Información técnica necesaria para funcionar</h2>
       <p>
         Como cualquier aplicación que se conecta a internet, para mostrarte el
         contenido la app se comunica con los siguientes servicios, que reciben
@@ -126,48 +140,52 @@
         </li>
       </ul>
 
-      <h2>4. Permisos del dispositivo</h2>
+      <h2>5. Permisos del dispositivo</h2>
       <ul>
         <li><strong>Internet:</strong> para reproducir la señal y cargar las noticias.</li>
-        <li><strong>Mantener la pantalla encendida:</strong> para que el teléfono no se bloquee mientras ves la transmisión.</li>
-        <li><strong>Imagen en imagen (ventana flotante):</strong> para seguir viendo el canal cuando sales de la app. Puedes desactivarla en los ajustes de Android.</li>
+        <li><strong>Mantener la pantalla encendida:</strong> para que el teléfono o la TV no se bloqueen ni muestren el protector de pantalla mientras ves la transmisión.</li>
+        <li><strong>Imagen en imagen (ventana flotante, solo celular):</strong> para seguir viendo el canal cuando sales de la app. Puedes desactivarla en los ajustes de Android.</li>
       </ul>
 
-      <h2>5. Con quién compartimos datos</h2>
+      <h2>6. Con quién compartimos datos</h2>
       <p>
         No vendemos, alquilamos ni compartimos información de los usuarios con
         terceros. Los únicos servicios que intervienen son los proveedores
-        técnicos mencionados en el punto 3, que actúan solo para hacer
+        técnicos mencionados en el punto 4, que actúan solo para hacer
         funcionar la app.
       </p>
 
-      <h2>6. Seguridad</h2>
+      <h2>7. Seguridad</h2>
       <p>
-        Todas las conexiones de la app con el servidor de la señal y con
-        Firebase viajan cifradas (HTTPS).
+        Las conexiones de la app con Firebase (noticias, programación y
+        estadísticas) viajan cifradas (HTTPS). La señal de video la entrega el
+        servidor del proveedor de streaming del canal en el formato que este
+        ofrece, que puede no estar cifrado; por esa conexión solo se recibe el
+        video, la app no envía datos tuyos.
       </p>
 
-      <h2>7. Niños</h2>
+      <h2>8. Niños</h2>
       <p>
         La app es de uso general y no está dirigida específicamente a menores de
         13 años. No recopilamos a sabiendas información personal de niños.
       </p>
 
-      <h2>8. Tus derechos</h2>
+      <h2>9. Tus derechos</h2>
       <p>
-        Como no guardamos datos personales tuyos, no hay información asociada a
-        ti que debamos entregar, corregir o borrar. Si tienes alguna consulta
+        Como no guardamos datos personales tuyos (las estadísticas son solo
+        totales por día), no hay información asociada a ti que debamos
+        entregar, corregir o borrar. Si tienes alguna consulta
         sobre tu privacidad, puedes escribirnos y te responderemos. Puedes dejar
         de usar la app en cualquier momento desinstalándola.
       </p>
 
-      <h2>9. Cambios en esta política</h2>
+      <h2>10. Cambios en esta política</h2>
       <p>
         Si la app cambia y empieza a tratar datos de otra forma, actualizaremos
         esta página y la fecha de "Última actualización" de arriba.
       </p>
 
-      <h2>10. Contacto</h2>
+      <h2>11. Contacto</h2>
       <p>
         Para cualquier consulta sobre esta política o sobre la app, escríbenos a
         <a href="mailto:orbexstudios.ec@gmail.com">orbexstudios.ec@gmail.com</a>.

@@ -3,6 +3,21 @@ import 'package:flutter/material.dart';
 import '../channel_repository.dart';
 import '../channel_summary.dart';
 
+/// Valida un enlace de señal. Se acepta http además de https: la señal del
+/// proveedor actual es http y las apps la reproducen (usesCleartextTraffic
+/// en el manifest); lo único que no anda con http es la vista previa del
+/// panel publicado (ver channel_preview_card.dart).
+String? validateStreamUrl(String? value) {
+  final text = value?.trim() ?? '';
+  if (text.isEmpty) return 'Pegá el enlace.';
+  final uri = Uri.tryParse(text);
+  if (uri == null || !uri.hasAuthority) return 'No parece un enlace válido.';
+  if (uri.scheme != 'https' && uri.scheme != 'http') {
+    return 'El enlace tiene que empezar con http:// o https://';
+  }
+  return null;
+}
+
 /// Ver/editar el enlace de la señal del canal. Acá no hay servidor de
 /// streaming propio: el proveedor del canal entrega un enlace HLS (.m3u8)
 /// ya listo, y lo único que hace el panel es guardarlo para que lo
@@ -37,18 +52,9 @@ class _ChannelSourceDialogState extends State<ChannelSourceDialog> {
     super.dispose();
   }
 
-  String? _validate(String? value) {
-    final text = value?.trim() ?? '';
-    // Vacío es válido: quita el enlace y las apps quedan "fuera del aire".
-    if (text.isEmpty) return null;
-    final uri = Uri.tryParse(text);
-    if (uri == null || !uri.hasAuthority) return 'No parece un enlace válido.';
-    // Android bloquea el tráfico sin cifrar por defecto y el panel (HTTPS)
-    // tampoco puede cargar video http://, así que un enlace http no se
-    // vería en ningún lado.
-    if (uri.scheme != 'https') return 'El enlace tiene que empezar con https://';
-    return null;
-  }
+  // Vacío es válido: quita el enlace principal.
+  String? _validate(String? value) =>
+      (value?.trim() ?? '').isEmpty ? null : validateStreamUrl(value);
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
@@ -87,7 +93,7 @@ class _ChannelSourceDialogState extends State<ChannelSourceDialog> {
             child: Icon(Icons.link_rounded, color: scheme.primary, size: 18),
           ),
           const SizedBox(width: 12),
-          const Text('Enlace de la señal'),
+          const Text('Servidor principal'),
         ],
       ),
       content: SizedBox(
@@ -104,7 +110,7 @@ class _ChannelSourceDialogState extends State<ChannelSourceDialog> {
                 autocorrect: false,
                 decoration: const InputDecoration(
                   labelText: 'Enlace HLS (.m3u8)',
-                  hintText: 'https://…/index.m3u8',
+                  hintText: 'http://…/stream.m3u8',
                 ),
                 validator: _validate,
                 onFieldSubmitted: (_) => _save(),
@@ -128,8 +134,8 @@ class _ChannelSourceDialogState extends State<ChannelSourceDialog> {
                     Expanded(
                       child: Text(
                         'Pegá el enlace que te entrega tu proveedor de '
-                        'streaming. Es lo que reproducen la app de celular y '
-                        'la de TV mientras el canal esté al aire; al guardar, '
+                        'streaming. Es el servidor principal: se usa los días '
+                        'que no tienen otro servidor asignado. Al guardar, '
                         'cambia para todos al instante.',
                         style: TextStyle(
                           fontSize: 12,

@@ -27,6 +27,11 @@ class TvPlayerScreen extends StatefulWidget {
 }
 
 class _TvPlayerScreenState extends State<TvPlayerScreen> {
+  /// Una sola suscripción: pedirla en build() reiniciaba el reproductor en
+  /// cada redibujado (ver channel_screen.dart).
+  late final Stream<ChannelSummary?> _channel =
+      ChannelRepository().watchChannel(widget.branding.tenantId);
+
   @override
   void initState() {
     super.initState();
@@ -45,11 +50,10 @@ class _TvPlayerScreenState extends State<TvPlayerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final repository = ChannelRepository();
     return Scaffold(
       backgroundColor: Colors.black,
       body: StreamBuilder<ChannelSummary?>(
-        stream: repository.watchChannel(widget.branding.tenantId),
+        stream: _channel,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -58,8 +62,7 @@ class _TvPlayerScreenState extends State<TvPlayerScreen> {
           // Mismo criterio que la app de celular (ver channel_screen.dart):
           // enlace externo + estado puesto desde el panel.
           final channel = snapshot.data;
-          final hasPlayback = channel?.playbackUrl?.isNotEmpty ?? false;
-          if (channel == null || !hasPlayback || !channel.isLive) {
+          if (channel == null || !channel.hasPlayback || !channel.isLive) {
             return _OffAir(branding: widget.branding);
           }
 
@@ -98,7 +101,8 @@ class _TvPlayerState extends State<_TvPlayer> {
   }
 
   void _syncPlayer() {
-    final url = widget.channel.playbackUrl;
+    // En TV no hay selector (control remoto): el servidor que toca hoy.
+    final url = widget.channel.sourceFor(DateTime.now())?.url;
     if (url == null || url.isEmpty) return;
     if (_playback == null) {
       // Sin control táctil cómodo en un control remoto no hay botón de

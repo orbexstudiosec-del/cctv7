@@ -4,11 +4,15 @@ import '../channel/channel_repository.dart';
 import '../channel/channel_summary.dart';
 import '../channel/widgets/channel_details_dialog.dart';
 import '../channel/widgets/channel_preview_card.dart';
-import '../channel/widgets/channel_source_dialog.dart';
+import '../channel/widgets/stream_sources_card.dart';
 import '../news/news_item.dart';
 import '../news/news_page.dart';
 import '../news/news_repository.dart';
 import '../news/widgets/news_form_dialog.dart';
+import '../reports/reports_page.dart';
+import '../schedule/schedule_page.dart';
+import '../schedule/schedule_repository.dart';
+import '../schedule/widgets/schedule_form_dialog.dart';
 import '../settings/social_links_page.dart';
 import '../shared/theme.dart';
 import '../shared/widgets/dashboard_shell.dart';
@@ -34,6 +38,7 @@ class TenantDashboard extends StatelessWidget {
   Widget build(BuildContext context) {
     final repository = ChannelRepository();
     final newsRepository = NewsRepository();
+    final scheduleRepository = ScheduleRepository();
 
     return DashboardShell(
       sidebarIcon: branding.logoForBrandBackground != null
@@ -102,6 +107,13 @@ class TenantDashboard extends StatelessWidget {
                               repository: repository,
                               canManage: _canManage,
                             ),
+                            const SizedBox(height: 24),
+                            StreamSourcesCard(
+                              channel: channel,
+                              tenantId: branding.tenantId,
+                              repository: repository,
+                              canManage: _canManage,
+                            ),
                           ],
                         ),
                       ),
@@ -143,6 +155,43 @@ class TenantDashboard extends StatelessWidget {
             canDelete: role == 'tenant_admin',
             brandColor: branding.primaryColor,
             brandSecondary: branding.secondaryColor,
+          ),
+        ),
+        DashboardDestination(
+          icon: Icons.calendar_month_outlined,
+          label: 'Programación',
+          pageTitle: 'Programación',
+          pageSubtitle: 'La parrilla semanal que ven tus espectadores',
+          actions: [
+            if (_canManage)
+              FilledButton.icon(
+                onPressed: () => showDialog<void>(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (_) => ScheduleFormDialog(
+                    tenantId: branding.tenantId,
+                    repository: scheduleRepository,
+                  ),
+                ),
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: const Text('Nuevo programa'),
+              ),
+          ],
+          bodyBuilder: (context, _) => SchedulePage(
+            tenantId: branding.tenantId,
+            repository: scheduleRepository,
+            canManage: _canManage,
+          ),
+        ),
+        DashboardDestination(
+          icon: Icons.insights_outlined,
+          label: 'Reportes',
+          pageTitle: 'Reportes',
+          pageSubtitle: 'Visitas e instalaciones de la app, día por día',
+          bodyBuilder: (context, _) => ReportsPage(
+            tenantId: branding.tenantId,
+            channelName: branding.appName,
+            brandColor: branding.primaryColor,
           ),
         ),
         DashboardDestination(
@@ -431,7 +480,7 @@ class _ChannelControlCard extends StatelessWidget {
                 FilledButton.icon(
                   // Sin enlace no hay nada que poner al aire; apagar
                   // siempre se puede.
-                  onPressed: isLive || channel.hasPlaybackUrl
+                  onPressed: isLive || channel.hasAnySource
                       ? () => repository.setLive(tenantId, !isLive)
                       : null,
                   style: isLive
@@ -456,18 +505,8 @@ class _ChannelControlCard extends StatelessWidget {
                   icon: const Icon(Icons.edit_outlined, size: 18),
                   label: const Text('Editar detalles'),
                 ),
-                OutlinedButton.icon(
-                  onPressed: () => showDialog<void>(
-                    context: context,
-                    builder: (_) => ChannelSourceDialog(
-                      tenantId: tenantId,
-                      repository: repository,
-                      existing: channel,
-                    ),
-                  ),
-                  icon: const Icon(Icons.link_rounded, size: 18),
-                  label: const Text('Enlace de la señal'),
-                ),
+                // El enlace de la señal ahora se edita en la tarjeta
+                // "Servidores de transmisión" (principal + adicionales).
               ],
             ),
           ],

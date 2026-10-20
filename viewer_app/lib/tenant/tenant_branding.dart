@@ -32,9 +32,9 @@ class TenantBranding {
       tenantId: data['tenantId'] as String,
       slug: slug,
       appName: data['appName'] as String? ?? slug,
-      primaryColor: _colorFromHex(data['primaryColor'] as String? ?? '#1A73E8'),
+      primaryColor: _colorFromHex(data['primaryColor'] as String? ?? '#6AC827'),
       secondaryColor: _colorFromHex(
-        data['secondaryColor'] as String? ?? '#F5A623',
+        data['secondaryColor'] as String? ?? '#E31E24',
       ),
       logoUrl: data['logoUrl'] as String?,
       logoOnColorUrl: data['logoOnColorUrl'] as String?,

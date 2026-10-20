@@ -19,8 +19,8 @@ const SLUG = "canal7";
 const NAME = "CCTV CANAL 7";
 // Colores de marca: se pueden cambiar después editando
 // tenantsPublic/canal7 en la consola de Firebase.
-const PRIMARY_COLOR = "#1A4B9C";
-const SECONDARY_COLOR = "#D81E2C";
+const PRIMARY_COLOR = "#6AC827";
+const SECONDARY_COLOR = "#E31E24";
 
 async function main() {
   const publicRef = db.collection("tenantsPublic").doc(SLUG);

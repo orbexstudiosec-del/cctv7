@@ -76,4 +76,11 @@ class ChannelRepository {
   Future<void> setPlaybackUrl(String tenantId, String? url) {
     return _channelDoc(tenantId).update({'playbackUrl': url});
   }
+
+  /// Reemplaza la lista de puntos de transmisión adicionales.
+  Future<void> setSources(String tenantId, List<StreamSource> sources) {
+    return _channelDoc(tenantId).update({
+      'sources': [for (final s in sources) s.toMap()],
+    });
+  }
 }

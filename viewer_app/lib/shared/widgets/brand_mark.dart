@@ -18,7 +18,7 @@ class BrandMark extends StatelessWidget {
   final Gradient? gradient;
 
   static const _defaultGradient = LinearGradient(
-    colors: [Color(0xFF6C5CE7), Color(0xFF8E7CFF)],
+    colors: [Color(0xFF6AC827), Color(0xFF3E9A12)],
   );
 
   @override
@@ -26,7 +26,7 @@ class BrandMark extends StatelessWidget {
     final effectiveGradient = gradient ?? _defaultGradient;
     final glowColor = (effectiveGradient is LinearGradient
         ? effectiveGradient.colors.first
-        : Colors.indigo);
+        : const Color(0xFF6AC827));
     return Container(
       width: size,
       height: size,

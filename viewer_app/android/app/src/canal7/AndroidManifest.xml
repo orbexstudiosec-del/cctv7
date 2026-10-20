@@ -1,13 +1,35 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <application>
-        <!-- Habilita Picture-in-Picture solo en el flavor de celular: al
-             salir de la app (ej. abrir WhatsApp), el video sigue en una
-             ventana flotante en vez de quedar sin reproducir en segundo
-             plano. android:resizeableActivity es requerido por Android
-             para permitir PiP. Ver MainActivity.kt (onUserLeaveHint). -->
+    <!-- La misma app sirve para celular y para Android TV / Google TV. Con
+         leanback en required="false" Play Store la ofrece en las dos
+         tiendas, y touchscreen opcional permite instalarla en TVs que
+         solo tienen control remoto (D-pad). Al arrancar, bootstrap.dart
+         pregunta a MainActivity.kt si es una TV y abre solo el reproductor
+         (lib/tv/) o la app completa. -->
+    <uses-feature
+        android:name="android.software.leanback"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.touchscreen"
+        android:required="false" />
+
+    <application android:banner="@drawable/tv_banner">
+        <!-- Picture-in-Picture para el celular: al salir de la app (ej. abrir
+             WhatsApp), el video sigue en una ventana flotante en vez de
+             quedar sin reproducir en segundo plano. android:resizeableActivity
+             es requerido por Android para permitir PiP. En TV no se usa (ver
+             MainActivity.kt, onUserLeaveHint).
+
+             LEANBACK_LAUNCHER hace que aparezca en la fila de apps del
+             launcher de Android TV; el LAUNCHER de src/main sigue para el
+             celular. -->
         <activity
             android:name=".MainActivity"
             android:supportsPictureInPicture="true"
-            android:resizeableActivity="true" />
+            android:resizeableActivity="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+        </activity>
     </application>
 </manifest>

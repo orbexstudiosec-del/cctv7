@@ -1,4 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -9,9 +12,19 @@ import 'tenant/tenant_branding.dart';
 import 'tenant/tenant_config.dart';
 import 'tenant/tenant_repository.dart';
 
+/// Desarrollo local: `--dart-define=USE_EMULATOR=true` apunta Auth,
+/// Firestore y Storage a los emuladores (`firebase emulators:start` en
+/// firebase/, datos de prueba con firebase/scripts/seedEmulator.js).
+const _useEmulator = bool.fromEnvironment('USE_EMULATOR');
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  if (_useEmulator) {
+    await FirebaseAuth.instance.useAuthEmulator('localhost', 9099);
+    FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8080);
+    await FirebaseStorage.instance.useStorageEmulator('localhost', 9199);
+  }
   runApp(const AdminPanelApp());
 }
 
@@ -29,7 +42,12 @@ class _AdminPanelAppState extends State<AdminPanelApp> {
   @override
   void initState() {
     super.initState();
-    _brandingFuture = _tenantRepository.fetchBranding(kTenantSlug);
+    // Sin timeout, si Firestore no responde (ej. base sin crear) el SDK web
+    // reintenta para siempre y el panel queda en el spinner; con error cae
+    // en _TenantNotFound.
+    _brandingFuture = _tenantRepository
+        .fetchBranding(kTenantSlug)
+        .timeout(const Duration(seconds: 20));
   }
 
   @override

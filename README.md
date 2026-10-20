@@ -83,6 +83,7 @@ Pestañas (en `lib/tenant/tenant_dashboard.dart`):
 |---|---|---|
 | **Canal** | `lib/channel/` | Enlace de la señal, salir al aire / finalizar, vista previa en vivo (hls.js, se reconecta sola), título y descripción. |
 | **Noticias** | `lib/news/` | Crear/editar con **vista previa idéntica a la app**, borradores, destacada, categorías, filtros. Las imágenes se comprimen en el navegador (1600 px JPEG) antes de subir. |
+| **Reportes** | `lib/reports/` | Visitas, equipos únicos e instalaciones por día (celular y TV), con exportación a **Excel** y **PDF**. Los datos los escribe la app (`viewer_app/lib/stats/usage_tracker.dart`); las descargas oficiales de Play están en Play Console. |
 | **Redes sociales** | `lib/settings/` | Enlaces que aparecen en el menú de la app. |
 
 - El panel apunta a un único tenant: slug fijo `canal7` en
@@ -98,12 +99,20 @@ Pestañas (en `lib/tenant/tenant_dashboard.dart`):
 
 ### 4.2 App de espectadores — `viewer_app/` (Flutter)
 
-Dos *flavors*, cada uno con su `applicationId`:
+Un solo *flavor*, `canal7` (`com.orbexstudios.cctvcanal7`, entrada
+`lib/main_canal7.dart`), que es **la misma app para celular y Android TV**: al
+arrancar, `lib/bootstrap.dart` le pregunta a `MainActivity.kt` si el equipo es
+una TV.
 
-| Flavor | applicationId | Entrada | Pantalla |
-|---|---|---|---|
-| `canal7` (celular) | `com.orbexstudios.cctvcanal7` | `lib/main_canal7.dart` | `lib/channel/channel_screen.dart` |
-| `canal7tv` (Android TV) | `com.orbexstudios.cctvcanal7.tv` | `lib/main_canal7_tv.dart` | `lib/tv/tv_player_screen.dart` |
+| Equipo | Pantalla |
+|---|---|
+| Celular | `lib/channel/channel_screen.dart` (app completa) |
+| Android TV / Google TV | `lib/tv/tv_player_screen.dart` (solo el reproductor, horizontal) |
+
+El manifiesto del flavor (`android/app/src/canal7/AndroidManifest.xml`) declara
+Leanback como opcional, el banner de TV y `LEANBACK_LAUNCHER`, así Play Store la
+ofrece en las dos tiendas con una sola ficha. Para ver la pantalla de TV en un
+celular: `--dart-define=FORCE_TV=true`.
 
 Piezas importantes:
 
@@ -146,6 +155,8 @@ Reglas destacadas (`firestore.rules`):
   rechaza entera). Usa el índice compuesto `published + createdAt`.
 - `tenants/{id}/settings/{doc}`: lectura pública, escritura del staff (redes
   sociales).
+- `tenants/{id}/stats/{yyyy-MM-dd}`: la app (sin cuenta) solo puede **sumar 1**
+  a los contadores conocidos; solo el panel los lee. Nadie borra.
 
 ## 5. Modelo de datos (Firestore)
 
@@ -153,13 +164,19 @@ Reglas destacadas (`firestore.rules`):
 tenantsPublic/canal7                    Marca pública: nombre, logo, colores, tenantId
 tenants/{tenantId}
   ├── streams/main                      EL canal: status live|offline, playbackUrl
-  │                                     (enlace de la señal), title, description,
-  │                                     startedAt, endedAt
+  │                                     (servidor principal), sources [{id, name,
+  │                                     url, days}] (servidores por día), title,
+  │                                     description, startedAt, endedAt
   ├── news/{id}                         title, summary, body, category, imageUrl,
   │                                     imagePath, featured, published,
   │                                     createdAt, updatedAt
-  └── settings/social                   facebook, instagram, tiktok, youtube, x,
-                                        whatsapp, website
+  ├── schedule/{id}                     Parrilla: title, host, description,
+  │                                     days [1=lun..7=dom], start/end "HH:mm"
+  │                                     (end "00:00" = medianoche)
+  ├── settings/social                   facebook, instagram, tiktok, youtube, x,
+  │                                     whatsapp, website
+  └── stats/{yyyy-MM-dd}                Contadores del día: visits, devices,
+                                        installs (+ sus versiones …Phone / …Tv)
 users/{uid}                             Perfil + rol (espejo de los custom claims)
 ```
 
@@ -223,8 +240,7 @@ firebase deploy --only functions --project canal7app
 3. Requiere `android/key.properties` + `android/upload-keystore.jks` (ver §8).
    Sin ellos el build cae a la firma de debug y Play lo rechaza.
 
-APK para instalar a mano: `flutter build apk --release --flavor canal7 -t lib/main_canal7.dart`
-(o `--flavor canal7tv -t lib/main_canal7_tv.dart` para TV).
+APK para instalar a mano (sirve en celular y en TV): `flutter build apk --release --flavor canal7 -t lib/main_canal7.dart`.
 
 > `viewer_app` pide Dart `^3.13.5` (Flutter 3.47 o más nuevo).
 
@@ -232,7 +248,7 @@ APK para instalar a mano: `flutter build apk --release --flavor canal7 -t lib/ma
 
 | Qué | Dónde |
 |---|---|
-| **Logo real del canal** | Reemplazar las 5 imágenes de `viewer_app/branding_src/` y `viewer_app/assets/branding/canal7_logo.png` (mismos tamaños), el banner de TV `android/app/src/canal7tv/res/drawable/tv_banner.png` (320×180) y regenerar ícono/splash (§4.2). También los íconos de `admin_panel/web/`. |
+| **Logo real del canal** | Reemplazar las 5 imágenes de `viewer_app/branding_src/` y `viewer_app/assets/branding/canal7_logo.png` (mismos tamaños), el banner de TV `android/app/src/canal7/res/drawable/tv_banner.png` (320×180) y regenerar ícono/splash (§4.2). También los íconos de `admin_panel/web/`. |
 | **Colores de marca** | `tenantsPublic/canal7` (`primaryColor`, `secondaryColor`); los valores iniciales de `createTenant.js` son provisionales. |
 | **Clave de subida a Play** | Crear `viewer_app/android/upload-keystore.jks` + `key.properties` **propios de esta app** y respaldarlos fuera de la PC. Si se pierden, hay que pedirle a Google que reemplace la clave (tarda días). |
 | **Textos legales** | `admin_panel/web/privacidad.html` y `terminos.html` son una adaptación de las de Tulcán Tv: revisarlas con el canal (responsable, proveedor de la señal, contacto). |

@@ -7,17 +7,23 @@ import 'news_visuals.dart';
 
 /// Noticias del tenant, pensada para ir debajo de la info del canal (en
 /// vivo o fuera del aire). Arriba la destacada más reciente en grande, y
-/// el resto en lista; tocar cualquiera abre el detalle. No se muestra nada
-/// si no hay noticias, para no agregar una sección vacía.
+/// el resto en lista; tocar cualquiera abre el detalle. Si no hay
+/// noticias muestra un aviso (va bajo la pestaña "Noticias").
 class NewsSection extends StatelessWidget {
-  const NewsSection({super.key, required this.tenantId});
+  const NewsSection({
+    super.key,
+    required this.tenantId,
+    this.padding = const EdgeInsets.fromLTRB(20, 8, 20, 8),
+  });
 
   final String tenantId;
 
+  /// Margen alrededor de la sección; `EdgeInsets.zero` si el contenedor ya
+  /// tiene el suyo.
+  final EdgeInsetsGeometry padding;
+
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
     return StreamBuilder<List<NewsItem>>(
       stream: NewsRepository().watchNews(tenantId),
       builder: (context, snapshot) {
@@ -27,7 +33,22 @@ class NewsSection extends StatelessWidget {
           debugPrint('NewsSection: error cargando noticias: ${snapshot.error}');
         }
         final news = snapshot.data ?? const <NewsItem>[];
-        if (news.isEmpty) return const SizedBox.shrink();
+        if (news.isEmpty) {
+          // Va debajo de la pestaña "Noticias": en vez de dejarla en blanco,
+          // avisar (salvo mientras carga).
+          if (!snapshot.hasData && !snapshot.hasError) {
+            return const SizedBox.shrink();
+          }
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 32),
+            child: Text(
+              'Todavía no hay noticias publicadas.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant),
+            ),
+          );
+        }
 
         final hero = news.where((n) => n.featured).firstOrNull;
         final rest = news.where((n) => n != hero).toList();
@@ -39,30 +60,12 @@ class NewsSection extends StatelessWidget {
             );
 
         return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+          padding: padding,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.campaign_outlined,
-                    size: 15,
-                    color: scheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'NOTICIAS',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.0,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
+              // Sin título "NOTICIAS": va debajo del selector
+              // Noticias / Programación de la pantalla del canal.
               if (hero != null) ...[
                 NewsHeroCard(
                   item: hero,

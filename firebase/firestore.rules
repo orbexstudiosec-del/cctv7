@@ -65,6 +65,14 @@ service cloud.firestore {
         allow delete: if isSuperAdmin() || isTenantAdmin(tenantId);
       }
 
+      // Parrilla de programación: un doc por programa (días + horario).
+      // Lectura pública (la ve la app sin cuenta), la edita el staff desde
+      // el panel.
+      match /schedule/{slotId} {
+        allow read: if true;
+        allow create, update, delete: if isSuperAdmin() || isTenantStaff(tenantId);
+      }
+
       // Configuración pública que el staff edita desde el panel (por ahora
       // solo `social`: links a redes sociales del menú de la app). Aparte
       // de tenantsPublic a propósito: ese doc sigue sin escritura desde el
@@ -73,6 +81,45 @@ service cloud.firestore {
         allow read: if true;
         allow write: if isSuperAdmin() || isTenantStaff(tenantId);
       }
+
+      // Contadores diarios de uso para Reportes del panel: un doc por día
+      // (id yyyy-MM-dd). La app los escribe sin cuenta (ver
+      // viewer_app/lib/stats/usage_tracker.dart), así que solo se permite
+      // sumar exactamente 1 a los campos conocidos -- nada de poner
+      // números a mano ni borrar. Solo el panel los lee.
+      match /stats/{day} {
+        allow read: if isSuperAdmin() || belongsToTenant(tenantId);
+        allow create: if day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+          && request.resource.data.keys().hasOnly(statFields())
+          && statStartsAtOne('visits') && statStartsAtOne('visitsPhone')
+          && statStartsAtOne('visitsTv') && statStartsAtOne('devices')
+          && statStartsAtOne('devicesPhone') && statStartsAtOne('devicesTv')
+          && statStartsAtOne('installs') && statStartsAtOne('installsPhone')
+          && statStartsAtOne('installsTv');
+        allow update: if request.resource.data.diff(resource.data)
+            .affectedKeys().hasOnly(statFields())
+          && statBumpsByOne('visits') && statBumpsByOne('visitsPhone')
+          && statBumpsByOne('visitsTv') && statBumpsByOne('devices')
+          && statBumpsByOne('devicesPhone') && statBumpsByOne('devicesTv')
+          && statBumpsByOne('installs') && statBumpsByOne('installsPhone')
+          && statBumpsByOne('installsTv');
+        allow delete: if false;
+      }
+    }
+
+    function statFields() {
+      return ['visits', 'visitsPhone', 'visitsTv', 'devices', 'devicesPhone',
+        'devicesTv', 'installs', 'installsPhone', 'installsTv'];
+    }
+
+    function statStartsAtOne(field) {
+      return !(field in request.resource.data)
+        || request.resource.data[field] == 1;
+    }
+
+    function statBumpsByOne(field) {
+      return !(field in request.resource.data.diff(resource.data).affectedKeys())
+        || request.resource.data[field] == resource.data.get(field, 0) + 1;
     }
 
     // Perfiles de usuario (espejo de los custom claims, para listar en el panel).

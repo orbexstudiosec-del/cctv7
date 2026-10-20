@@ -1,3 +1,7 @@
+// admin_panel es solo Flutter Web: dart:html es seguro acá.
+// ignore_for_file: deprecated_member_use, avoid_web_libraries_in_flutter
+import 'dart:html' as html;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -15,7 +19,8 @@ class ChannelPreviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final url = channel.playbackUrl;
+    // El servidor que están usando las apps hoy.
+    final url = channel.urlFor(DateTime.now());
 
     return Container(
       width: double.infinity,
@@ -54,7 +59,12 @@ class ChannelPreviewCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(14),
               child: AspectRatio(
                 aspectRatio: 16 / 9,
-                child: LivePreviewPlayer(url: url),
+                // Panel en https + señal en http: el navegador bloquea el
+                // video ("contenido mixto") y quedaba un reproductor negro.
+                // Las apps sí lo reproducen (usesCleartextTraffic).
+                child: Uri.base.scheme == 'https' && url.startsWith('http://')
+                    ? _MixedContentNotice(url: url)
+                    : LivePreviewPlayer(url: url),
               ),
             ),
             const SizedBox(height: 14),
@@ -92,6 +102,54 @@ class ChannelPreviewCard extends StatelessWidget {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+class _MixedContentNotice extends StatelessWidget {
+  const _MixedContentNotice({required this.url});
+
+  final String url;
+
+  @override
+  Widget build(BuildContext context) {
+    // El servidor de la señal sirve su propio reproductor en la raíz (ej.
+    // http://190.107.232.9:8082/): abierto en otra pestaña, como página
+    // http, el navegador sí reproduce.
+    final uri = Uri.parse(url);
+    final playerPage = uri.replace(path: '/', query: null).toString();
+    return Container(
+      color: const Color(0xFF0A0A0E),
+      padding: const EdgeInsets.all(28),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.lock_open_rounded, color: Colors.white70, size: 36),
+          const SizedBox(height: 14),
+          const Text(
+            'La vista previa no se puede mostrar en el navegador',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+                color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'El enlace de la señal es http (sin candado) y el navegador lo '
+            'bloquea dentro de una página segura. En la app de celular y TV '
+            'sí se ve. Para tener vista previa acá, pedile al proveedor un '
+            'enlace https.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.7), height: 1.45),
+          ),
+          const SizedBox(height: 18),
+          FilledButton.icon(
+            onPressed: () => html.window.open(playerPage, '_blank'),
+            icon: const Icon(Icons.open_in_new_rounded, size: 18),
+            label: const Text('Ver la señal en otra pestaña'),
+          ),
         ],
       ),
     );

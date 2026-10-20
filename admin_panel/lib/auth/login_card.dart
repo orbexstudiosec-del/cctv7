@@ -66,57 +66,44 @@ class LoginCard extends StatelessWidget {
       body: Row(
         children: [
           Expanded(
+            // Panel de marca negro con el logo oficial (antes era el
+            // degradé de marca con un ícono genérico).
             child: Container(
-              decoration: BoxDecoration(
-                gradient:
-                    brandGradient(scheme.primary, secondary: scheme.secondary),
-              ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    top: -100,
-                    left: -100,
-                    child: _Glow(color: Colors.white.withValues(alpha: 0.08)),
-                  ),
-                  Positioned(
-                    bottom: -140,
-                    right: -140,
-                    child: _Glow(color: Colors.black.withValues(alpha: 0.18)),
-                  ),
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(48),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _LogoBadge(
-                            logoUrl: logoOnColorUrl ?? logoUrl,
-                            height: 110,
-                          ),
-                          const SizedBox(height: 32),
-                          Text(
-                            title,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 32,
-                              fontWeight: FontWeight.w800,
-                              height: 1.15,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            tagline,
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.85),
-                              fontSize: 15,
-                            ),
-                          ),
-                        ],
+              color: const Color(0xFF0A0A0E),
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(48),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _LogoBadge(
+                        logoUrl: logoOnColorUrl ?? logoUrl,
+                        fallbackAsset: kLogoOnDarkAsset,
+                        height: 240,
                       ),
-                    ),
+                      const SizedBox(height: 36),
+                      Text(
+                        title,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 30,
+                          fontWeight: FontWeight.w800,
+                          height: 1.15,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        tagline,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.7),
+                          fontSize: 15,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
@@ -132,55 +119,34 @@ class LoginCard extends StatelessWidget {
   }
 }
 
-/// Resplandor decorativo circular, usado en las esquinas del panel de
-/// marca para darle profundidad al degradé en vez de dejarlo plano.
-class _Glow extends StatelessWidget {
-  const _Glow({required this.color});
-
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 320,
-      height: 320,
-      decoration: BoxDecoration(shape: BoxShape.circle, color: color),
-    );
-  }
-}
+/// Logo oficial empaquetado (copia de viewer_app/assets/branding/), para
+/// cuando el canal todavía no subió uno desde el panel.
+const kLogoOnDarkAsset = 'assets/branding/canal7_logo_dark.png'; // letras blancas
+const kLogoAsset = 'assets/branding/canal7_logo.png'; // letras negras
 
 /// El logo real de un tenant suele ser un wordmark ancho, no un ícono
 /// cuadrado — por eso esto no fuerza un contenedor cuadrado (lo cortaría).
-/// Sin marco/fondo: se apoya directo sobre el degradé (el PNG trae su
-/// propia transparencia), con una sombra suave para que no se pierda
-/// contra el color de fondo.
+/// Sin marco/fondo: el PNG trae su propia transparencia.
 class _LogoBadge extends StatelessWidget {
-  const _LogoBadge({required this.logoUrl, required this.height});
+  const _LogoBadge({
+    required this.logoUrl,
+    required this.fallbackAsset,
+    required this.height,
+  });
 
   final String? logoUrl;
+  final String fallbackAsset;
   final double height;
 
   @override
   Widget build(BuildContext context) {
-    if (logoUrl == null) {
-      return Icon(
-        Icons.play_circle_fill_rounded,
-        color: Colors.white,
-        size: height * 0.7,
-      );
-    }
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.35),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Image.network(logoUrl!, height: height, fit: BoxFit.contain),
+    final asset = Image.asset(fallbackAsset, height: height, fit: BoxFit.contain);
+    if (logoUrl == null) return asset;
+    return Image.network(
+      logoUrl!,
+      height: height,
+      fit: BoxFit.contain,
+      errorBuilder: (context, error, stack) => asset,
     );
   }
 }
@@ -224,17 +190,16 @@ class _LoginForm extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (showBrandHeader) ...[
-              if (logoUrl != null)
-                Center(
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 20),
-                    child: Image.network(
-                      logoUrl!,
-                      height: 72,
-                      fit: BoxFit.contain,
-                    ),
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 20),
+                  child: _LogoBadge(
+                    logoUrl: logoUrl,
+                    fallbackAsset: kLogoAsset,
+                    height: 110,
                   ),
                 ),
+              ),
               Text(
                 title,
                 style: Theme.of(context).textTheme.headlineSmall,

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../flavors.dart';
 import '../shared/theme.dart';
 import '../shared/widgets/intro_screen.dart';
+import '../stats/usage_tracker.dart';
 import '../tenant/tenant_branding.dart';
 import '../tenant/tenant_repository.dart';
 import 'tv_player_screen.dart';
@@ -26,8 +27,13 @@ class _TvAppState extends State<TvApp> {
     _brandingFuture = _fetchBranding();
   }
 
-  Future<TenantBranding?> _fetchBranding() {
-    return TenantRepository().fetchBranding(FlavorConfig.instance.tenantSlug);
+  Future<TenantBranding?> _fetchBranding() async {
+    final branding = await TenantRepository()
+        .fetchBranding(FlavorConfig.instance.tenantSlug);
+    if (branding != null) {
+      UsageTracker.instance.start(branding.tenantId, isTv: true);
+    }
+    return branding;
   }
 
   void _retry() {
@@ -39,7 +45,7 @@ class _TvAppState extends State<TvApp> {
     return FutureBuilder<TenantBranding?>(
       future: _brandingFuture,
       builder: (context, snapshot) {
-        final defaultTheme = buildViewerTheme(seed: Colors.indigo);
+        final defaultTheme = buildViewerTheme(seed: kBrandGreen, secondary: kBrandRed);
 
         if (snapshot.connectionState != ConnectionState.done) {
           return MaterialApp(

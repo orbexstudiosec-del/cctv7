@@ -1,15 +1,40 @@
 package com.orbexstudios.cctvcanal7
 
 import android.app.PictureInPictureParams
+import android.app.UiModeManager
 import android.content.Context
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.os.Build
 import android.os.PowerManager
 import android.util.Rational
 import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     private var wakeLock: PowerManager.WakeLock? = null
+
+    // La misma app corre en celular y en Android TV: bootstrap.dart pregunta
+    // por este canal si es una TV para abrir solo el reproductor (lib/tv/).
+    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "viewer_app/device")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "isTv" -> result.success(isTv())
+                    else -> result.notImplemented()
+                }
+            }
+    }
+
+    // UI_MODE_TYPE_TELEVISION es lo que reportan Android TV / Google TV;
+    // FEATURE_LEANBACK cubre cajas genéricas que no siempre ponen el modo.
+    private fun isTv(): Boolean {
+        val uiModeManager = getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
+        return uiModeManager.currentModeType == Configuration.UI_MODE_TYPE_TELEVISION ||
+            packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
+    }
 
     // wakelock_plus (usado desde Dart) solo pone FLAG_KEEP_SCREEN_ON en la
     // ventana, que en cajas Android TV genéricas no siempre alcanza para
@@ -40,11 +65,10 @@ class MainActivity : FlutterActivity() {
         super.onUserLeaveHint()
         // Al salir de la app (ej. para abrir WhatsApp), que el video siga
         // reproduciéndose en una ventana flotante en vez de quedar en
-        // segundo plano sin pantalla. Solo tiene efecto en el flavor de
-        // celular: el flavor de TV no declara supportsPictureInPicture en
-        // su manifest (ver src/canal7tv/AndroidManifest.xml), y la
-        // mayoría de cajas Android TV tampoco tienen esta feature — el
-        // try/catch evita que eso cause un crash ahí.
+        // segundo plano sin pantalla. Solo en celular: en TV, salir con
+        // Home debe cerrar el video, y la mayoría de cajas Android TV
+        // tampoco tienen esta feature — el try/catch evita un crash ahí.
+        if (isTv()) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
             packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
         ) {

@@ -6,6 +6,7 @@
 // proyectos) y de Flutter.
 import 'package:flutter/material.dart';
 
+import '../../shared/theme.dart';
 import '../news_item.dart';
 
 /// Color de cada categoría (las mismas de `kNewsCategories`). Sin
@@ -157,7 +158,7 @@ class NewsHeroCard extends StatelessWidget {
                         end: Alignment.bottomRight,
                         colors: [
                           newsCategoryColor(context, item.category),
-                          const Color(0xFF0A0A12),
+                          kAppBackground,
                         ],
                       ),
                     ),

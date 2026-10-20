@@ -1,7 +1,7 @@
 name: viewer_app
 description: "App de CCTV CANAL 7 (celular y Android TV): señal en vivo y noticias del canal."
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: ^3.13.5
@@ -17,6 +17,7 @@ dependencies:
   url_launcher: ^6.3.3
   package_info_plus: ^10.2.2
   font_awesome_flutter: ^11.0.0
+  shared_preferences: ^2.5.6
 
 dev_dependencies:
   flutter_test:
@@ -45,13 +46,13 @@ flutter_launcher_icons:
   adaptive_icon_foreground_inset: 0
   min_sdk_android: 21
 
-# Splash nativo (antes de que arranque Flutter). Mismo fondo oscuro que el
-# tema de la app. Regenerar: dart run flutter_native_splash:create
+# Splash nativo (antes de que arranque Flutter): blanco, como el modo de
+# entrada de la app. Regenerar: dart run flutter_native_splash:create
 flutter_native_splash:
-  color: "#0A0A0E"
+  color: "#FFFFFF"
   image: "branding_src/splash_logo.png"
   android_12:
-    color: "#0A0A0E"
+    color: "#FFFFFF"
     image: "branding_src/splash_android12.png"
   android: true
   ios: true

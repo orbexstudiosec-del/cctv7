@@ -1,3 +1,5 @@
+import 'dart:ui' show Brightness;
+
 /// Un flavor = un build de la app con su propio build (ícono, nombre,
 /// applicationId) pero apuntando al mismo proyecto Firebase, resuelto por
 /// `tenantSlug` (mismo slug que `tenantsPublic/{slug}` en Firestore, igual
@@ -23,12 +25,27 @@ class FlavorConfig {
     required this.tenantSlug,
     required this.displayName,
     required this.logoAsset,
+    required this.logoOnDarkAsset,
+    required this.markAsset,
   });
 
   final Flavor flavor;
   final String tenantSlug;
   final String displayName;
+
+  /// Logo completo, letras negras: para fondo claro (el de entrada).
   final String logoAsset;
+
+  /// El mismo logo con letras blancas: para fondo oscuro o de color.
+  final String logoOnDarkAsset;
+
+  /// Logo según el brillo del fondo donde va.
+  String logoFor(Brightness background) =>
+      background == Brightness.dark ? logoOnDarkAsset : logoAsset;
+
+  /// Solo el símbolo de la marca (sin texto), para tamaños chicos como la
+  /// cabecera, cuando el canal todavía no subió un logo en el panel.
+  final String markAsset;
 
   static FlavorConfig? _instance;
 

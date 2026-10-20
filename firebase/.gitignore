@@ -12,5 +12,10 @@ functions/.env
 # Local / debug
 .firebaserc
 firebase-debug*.log
+firestore-debug.log
 ui-debug.log
+.firebase/
+
+# Copia del build del panel que arma admin_panel/deploy-hosting.ps1
+public/
 .runtimeconfig.json

@@ -71,21 +71,13 @@ android {
     }
 
     // Un flavor = un build de la app (su propio applicationId, nombre de
-    // app y google-services.json). Ver lib/flavors.dart.
+    // app y google-services.json). Ver lib/flavors.dart. El mismo build
+    // sirve para celular y Android TV (ver src/canal7/AndroidManifest.xml).
     flavorDimensions += "cliente"
     productFlavors {
         create("canal7") {
             dimension = "cliente"
             applicationId = "com.orbexstudios.cctvcanal7"
-            resValue("string", "app_name", "CCTV CANAL 7")
-        }
-        // App separada para Android TV/Google TV: mismo tenant, applicationId
-        // propio para poder convivir instalada junto a la de celular. Ver
-        // src/canal7tv/AndroidManifest.xml (Leanback, banner, horizontal
-        // forzado) y lib/main_canal7_tv.dart (pantalla solo-reproductor).
-        create("canal7tv") {
-            dimension = "cliente"
-            applicationId = "com.orbexstudios.cctvcanal7.tv"
             resValue("string", "app_name", "CCTV CANAL 7")
         }
     }

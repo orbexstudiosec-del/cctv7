@@ -25,9 +25,21 @@ class LivePlaybackController extends ChangeNotifier {
 
   static const _initTimeout = Duration(seconds: 20);
   static const _watchdogInterval = Duration(seconds: 2);
-  // ~12 s sin que avance la posición mientras debería estar reproduciendo.
+  // ~12 s sin que avance la posición mientras dice estar reproduciendo.
   static const _stallTicksBeforeReconnect = 6;
+  // Cargando (buffering) ExoPlayer se recupera solo cuando la red alcanza:
+  // reconectar a los 12 s tiraba el buffer y la carga empezaba de cero.
+  static const _bufferingTicksBeforeReconnect = 20;
   static const _maxRetryDelay = Duration(seconds: 15);
+  // En un vivo HLS `position` se cuenta desde el inicio de la ventana del
+  // playlist (~166 s en la señal del canal) y `duration` es el largo de esa
+  // ventana. El servidor borra los segmentos más viejos antes de sacarlos de
+  // la lista: si el video se va quedando atrás, termina pidiendo uno borrado
+  // (404) y se corta. Si el atraso pasa de [_maxLiveLag], salta a
+  // [_liveOffset] del borde en vivo.
+  static const _maxLiveLag = Duration(seconds: 70);
+  static const _liveOffset = Duration(seconds: 30);
+  int _lagLogTicks = 0;
 
   final VideoViewType viewType;
   String _url;
@@ -99,6 +111,7 @@ class LivePlaybackController extends ChangeNotifier {
     final video = _video;
     if (video == null || _disposed || isReconnecting) return;
     final value = video.value;
+    _keepNearLiveEdge(video);
     // Pausado a mano desde los controles: no es un cuelgue.
     if (!value.isPlaying && !value.isBuffering) {
       _resetStall();
@@ -106,13 +119,32 @@ class LivePlaybackController extends ChangeNotifier {
     }
     if (_lastPosition == value.position) {
       _stallTicks++;
-      if (_stallTicks >= _stallTicksBeforeReconnect) {
+      final limit = value.isBuffering
+          ? _bufferingTicksBeforeReconnect
+          : _stallTicksBeforeReconnect;
+      if (_stallTicks >= limit) {
         debugPrint('LivePlayback: video congelado, reconectando');
         _scheduleRetry(immediate: true);
       }
     } else {
       _lastPosition = value.position;
       _stallTicks = 0;
+    }
+  }
+
+  void _keepNearLiveEdge(VideoPlayerController video) {
+    final window = video.value.duration;
+    // Sin ventana conocida (no es un vivo HLS o todavía no la informó).
+    if (window <= _maxLiveLag + _liveOffset) return;
+    final lag = window - video.value.position;
+    if (++_lagLogTicks % 15 == 0) {
+      debugPrint('LivePlayback: atraso ${lag.inSeconds}s '
+          '(ventana ${window.inSeconds}s)');
+    }
+    if (lag > _maxLiveLag) {
+      debugPrint('LivePlayback: atrasado ${lag.inSeconds}s, vuelvo al vivo');
+      video.seekTo(window - _liveOffset);
+      _resetStall();
     }
   }
 

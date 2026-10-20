@@ -9,8 +9,15 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 Write-Host "==> flutter build web" -ForegroundColor Cyan
-& "C:\flutter\bin\flutter.bat" build web --no-wasm-dry-run
-if ($LASTEXITCODE -ne 0) { throw "flutter build web falló" }
+# El Flutter de C:\flutter (3.44) es más viejo que el que pide el proyecto.
+$flutter = if (Test-Path "E:\flutter-3.47\bin\flutter.bat") { "E:\flutter-3.47\bin\flutter.bat" } else { "flutter" }
+Push-Location $root
+try {
+  & $flutter build web --no-wasm-dry-run
+  if ($LASTEXITCODE -ne 0) { throw "flutter build web falló" }
+} finally {
+  Pop-Location
+}
 
 Write-Host "==> Copiando build a firebase/public" -ForegroundColor Cyan
 New-Item -ItemType Directory -Force "$root\..\firebase\public" | Out-Null
