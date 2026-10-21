@@ -1,0 +1,52 @@
+# Codemagic: compila el AAB firmado de la app (celular + Android TV).
+# La clave de subida NO va en git: se sube en Codemagic >
+# Team settings > Code signing identities > Android keystores
+# con el nombre de referencia "cctv7_upload".
+workflows:
+  android-release:
+    name: CCTV CANAL 7 - Android release
+    max_build_duration: 60
+    instance_type: linux_x2
+    working_directory: viewer_app
+    environment:
+      flutter: 3.47.7
+      java: 17
+      android_signing:
+        - cctv7_upload
+    triggering:
+      events:
+        - tag
+      tag_patterns:
+        - pattern: "v*"
+    scripts:
+      - name: key.properties desde la clave de Codemagic
+        script: |
+          cat > "$CM_BUILD_DIR/viewer_app/android/key.properties" <<EOF
+          storeFile=$CM_KEYSTORE_PATH
+          storePassword=$CM_KEYSTORE_PASSWORD
+          keyAlias=$CM_KEY_ALIAS
+          keyPassword=$CM_KEY_PASSWORD
+          EOF
+      - name: Dependencias
+        script: flutter pub get
+      - name: AAB release
+        # La versión sale de pubspec.yaml: subirla antes de cada publicación
+        # o Play rechaza el AAB por versionCode repetido.
+        script: flutter build appbundle --release --flavor canal7 -t lib/main_canal7.dart
+    artifacts:
+      - build/app/outputs/bundle/**/*.aab
+      - build/app/outputs/mapping/**/mapping.txt
+    publishing:
+      email:
+        recipients:
+          - orbexstudios.ec@gmail.com
+        notify:
+          success: true
+          failure: true
+      # Para subir directo a Play (pista interna), crear el grupo de
+      # variables "google_play" con GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+      # y descomentar:
+      # google_play:
+      #   credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+      #   track: internal
+      #   submit_as_draft: true
