@@ -1,52 +1,66 @@
-# Codemagic: compila el AAB firmado de la app (celular + Android TV).
-# La clave de subida NO va en git: se sube en Codemagic >
-# Team settings > Code signing identities > Android keystores
-# con el nombre de referencia "cctv7_upload".
+# Codemagic: compila el IPA de la app para iPhone/iPad y lo sube a
+# TestFlight. Mismo esquema que los workflows de Bex:
+#  - Clave de App Store Connect: integración "nortvision_asc_key" del equipo.
+#  - Grupo de variables "cctv7_ios" con CERTIFICATE_PRIVATE_KEY (clave RSA
+#    del certificado de distribución, no vive en el repo).
 workflows:
-  android-release:
-    name: CCTV CANAL 7 - Android release
+  ios-release:
+    name: CCTV CANAL 7 - iOS release
     max_build_duration: 60
-    instance_type: linux_x2
+    instance_type: mac_mini_m2
     working_directory: viewer_app
+    integrations:
+      app_store_connect: nortvision_asc_key
     environment:
+      groups:
+        - cctv7_ios
+      vars:
+        BUNDLE_ID: "com.orbexstudios.cctvcanal7"
+        APP_ID: "6825162932"
       flutter: 3.47.7
-      java: 17
-      android_signing:
-        - cctv7_upload
-    triggering:
-      events:
-        - tag
-      tag_patterns:
-        - pattern: "v*"
+      xcode: latest
     scripts:
-      - name: key.properties desde la clave de Codemagic
-        script: |
-          cat > "$CM_BUILD_DIR/viewer_app/android/key.properties" <<EOF
-          storeFile=$CM_KEYSTORE_PATH
-          storePassword=$CM_KEYSTORE_PASSWORD
-          keyAlias=$CM_KEY_ALIAS
-          keyPassword=$CM_KEY_PASSWORD
-          EOF
       - name: Dependencias
         script: flutter pub get
-      - name: AAB release
-        # La versión sale de pubspec.yaml: subirla antes de cada publicación
-        # o Play rechaza el AAB por versionCode repetido.
-        script: flutter build appbundle --release --flavor canal7 -t lib/main_canal7.dart
+      - name: Inicializar keychain
+        script: keychain initialize
+      - name: Obtener certificado y perfil de distribución
+        script: |
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+      - name: Agregar certificados al keychain
+        script: keychain add-certificates
+      - name: Configurar la firma de código
+        script: xcode-project use-profiles
+      - name: IPA release
+        script: |
+          # El build number (lo que va después del "+" en pubspec) se calcula
+          # solo a partir del último de TestFlight. La versión ("1.0.1") hay
+          # que subirla a mano en pubspec.yaml después de cada aprobación.
+          LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_ID" --all-versions 2>/dev/null || echo 0)
+          NEW_BUILD_NUMBER=$((LATEST + 1))
+          # Xcode baja los binarios de Firebase por Swift Package Manager y
+          # desde la red de Codemagic a veces se corta: se reintenta solo
+          # ante ese fallo de descarga.
+          set -o pipefail
+          for attempt in 1 2 3; do
+            if flutter build ipa --release -t lib/main_canal7.dart \
+              --build-number=$NEW_BUILD_NUMBER \
+              --export-options-plist=/Users/builder/export_options.plist 2>&1 | tee /tmp/flutter_build_ipa.log; then
+              break
+            fi
+            if [ "$attempt" -lt 3 ] && grep -qE "Could not resolve package dependencies|failed downloading" /tmp/flutter_build_ipa.log; then
+              echo "Falló la descarga de paquetes de SwiftPM (intento $attempt/3), reintentando en 20s..."
+              sleep 20
+            else
+              exit 1
+            fi
+          done
     artifacts:
-      - build/app/outputs/bundle/**/*.aab
-      - build/app/outputs/mapping/**/mapping.txt
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
     publishing:
-      email:
-        recipients:
-          - orbexstudios.ec@gmail.com
-        notify:
-          success: true
-          failure: true
-      # Para subir directo a Play (pista interna), crear el grupo de
-      # variables "google_play" con GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
-      # y descomentar:
-      # google_play:
-      #   credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
-      #   track: internal
-      #   submit_as_draft: true
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -23,17 +24,33 @@ const _forceTv = bool.fromEnvironment('FORCE_TV');
 
 const _deviceChannel = MethodChannel('viewer_app/device');
 
+/// App iOS de Firebase (canal7app). Va en código y no como
+/// `GoogleService-Info.plist` para no tener que agregarlo al proyecto de
+/// Xcode; como `google-services.json`, no es un secreto.
+const _iosFirebaseOptions = FirebaseOptions(
+  apiKey: 'AIzaSyCfKeWubl6VCOomldUrrs_EKhxvqTqrBNQ',
+  appId: '1:72308547984:ios:2bbdffe9ebd8c33c041315',
+  messagingSenderId: '72308547984',
+  projectId: 'canal7app',
+  storageBucket: 'canal7app.firebasestorage.app',
+  iosBundleId: 'com.orbexstudios.cctvcanal7',
+);
+
 /// Arranque común a todos los entrypoints (`lib/main_<cliente>.dart`): fija
-/// el flavor activo, inicializa Firebase (lee `google-services.json` /
-/// `GoogleService-Info.plist` del flavor automáticamente, no necesita
-/// `FirebaseOptions` explícitas en móvil) y levanta la app.
+/// el flavor activo, inicializa Firebase (en Android lee
+/// `google-services.json` del flavor; en iOS usa [_iosFirebaseOptions]) y
+/// levanta la app.
 ///
 /// La misma app sirve para celular y Android TV: en una TV levanta
 /// [TvApp] (solo el reproductor, horizontal) en vez de [ViewerApp].
 Future<void> bootstrap(FlavorConfig config) async {
   WidgetsFlutterBinding.ensureInitialized();
   FlavorConfig.initialize(config);
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(
+    options: defaultTargetPlatform == TargetPlatform.iOS
+        ? _iosFirebaseOptions
+        : null,
+  );
   if (_useEmulator) {
     FirebaseFirestore.instance.useFirestoreEmulator(_emulatorHost, 8080);
   }
