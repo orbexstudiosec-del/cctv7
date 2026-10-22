@@ -19,6 +19,7 @@ import '../shared/widgets/brand_mark.dart';
 import '../shared/widgets/status_chip.dart';
 import '../tenant/tenant_branding.dart';
 import 'channel_repository.dart';
+import 'ios_live_player.dart';
 import 'live_playback_controller.dart';
 import 'channel_summary.dart';
 
@@ -440,20 +441,17 @@ class _LiveChannelState extends State<_LiveChannel> {
     _syncPlayer();
   }
 
+  /// En iOS reproduce [IosLivePlayer] (media_kit): AVPlayer, el motor de
+  /// video_player en iOS, no tolera esta señal. Android sigue con
+  /// video_player + Chewie.
+  static final _isIos = defaultTargetPlatform == TargetPlatform.iOS;
+  final _iosPlayerKey = GlobalKey<IosLivePlayerState>();
+
   void _syncPlayer() {
     final url = _source?.url;
-    if (url == null || url.isEmpty) return;
+    if (url == null || url.isEmpty || _isIos) return;
     if (_playback == null) {
-      _playback = LivePlaybackController(
-        url: url,
-        // En iOS el modo textura copia cada cuadro de AVPlayer a una textura
-        // de Flutter al ritmo de la pantalla; con la señal de ~6 Mbps se
-        // saltea cuadros y el video se ve entrecortado. platformView muestra
-        // un AVPlayerLayer nativo, que reproduce fluido.
-        viewType: defaultTargetPlatform == TargetPlatform.iOS
-            ? VideoViewType.platformView
-            : VideoViewType.textureView,
-      )
+      _playback = LivePlaybackController(url: url)
         ..addListener(_onPlaybackChanged)
         ..start();
     } else {
@@ -569,14 +567,16 @@ class _LiveChannelState extends State<_LiveChannel> {
                   child: Center(child: _buildPlayerArea()),
                 ),
               ),
-              if (_chewieController != null)
+              if (_chewieController != null || _isIos)
                 // A media altura del video (el botón mide 44): arriba a la
                 // derecha tapaba el logo que el canal pone en su señal.
                 Positioned(
                   top: videoHeight / 2 - 22,
                   right: 12,
                   child: _FullscreenButton(
-                    onTap: () => _chewieController!.enterFullScreen(),
+                    onTap: () => _isIos
+                        ? _iosPlayerKey.currentState?.enterFullscreen()
+                        : _chewieController!.enterFullScreen(),
                   ),
                 ),
               Positioned(
@@ -651,6 +651,7 @@ class _LiveChannelState extends State<_LiveChannel> {
         message: 'El canal está en vivo pero todavía no hay video configurado.',
       );
     }
+    if (_isIos) return IosLivePlayer(key: _iosPlayerKey, url: url);
     if (_chewieController == null) {
       // Reintenta solo; el botón es por si alguien no quiere esperar.
       if (_playback?.isReconnecting ?? false) {

@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:media_kit/media_kit.dart';
 
 import 'app.dart';
 import 'flavors.dart';
@@ -45,6 +46,11 @@ const _iosFirebaseOptions = FirebaseOptions(
 /// [TvApp] (solo el reproductor, horizontal) en vez de [ViewerApp].
 Future<void> bootstrap(FlavorConfig config) async {
   WidgetsFlutterBinding.ensureInitialized();
+  // En iOS el vivo se reproduce con media_kit (ver IosLivePlayer); Android
+  // sigue con video_player y no trae las librerías de mpv.
+  if (defaultTargetPlatform == TargetPlatform.iOS) {
+    MediaKit.ensureInitialized();
+  }
   FlavorConfig.initialize(config);
   await Firebase.initializeApp(
     options: defaultTargetPlatform == TargetPlatform.iOS
