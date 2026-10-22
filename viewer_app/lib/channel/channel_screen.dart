@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:chewie/chewie.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
@@ -443,7 +444,16 @@ class _LiveChannelState extends State<_LiveChannel> {
     final url = _source?.url;
     if (url == null || url.isEmpty) return;
     if (_playback == null) {
-      _playback = LivePlaybackController(url: url)
+      _playback = LivePlaybackController(
+        url: url,
+        // En iOS el modo textura copia cada cuadro de AVPlayer a una textura
+        // de Flutter al ritmo de la pantalla; con la señal de ~6 Mbps se
+        // saltea cuadros y el video se ve entrecortado. platformView muestra
+        // un AVPlayerLayer nativo, que reproduce fluido.
+        viewType: defaultTargetPlatform == TargetPlatform.iOS
+            ? VideoViewType.platformView
+            : VideoViewType.textureView,
+      )
         ..addListener(_onPlaybackChanged)
         ..start();
     } else {
