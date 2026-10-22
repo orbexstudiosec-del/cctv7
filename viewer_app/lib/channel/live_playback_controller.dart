@@ -85,6 +85,17 @@ class LivePlaybackController extends ChangeNotifier {
         await controller.dispose();
         return;
       }
+      // En iOS un vivo informa duración 0 y la posición queda en 0 hasta
+      // que arranca: play() ve position == duration, cree que el video
+      // terminó y salta a 0, el segmento más viejo del playlist, que el
+      // servidor ya borró (404). AVPlayer falla y se reconecta sin fin.
+      // Con la posición real cargada antes, play() no salta.
+      if (controller.value.duration == Duration.zero) {
+        final position = await controller.position;
+        if (position != null) {
+          controller.value = controller.value.copyWith(position: position);
+        }
+      }
       await controller.play();
       controller.addListener(_onVideoEvent);
       _swapVideo(controller);
