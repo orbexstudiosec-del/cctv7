@@ -26,7 +26,9 @@ workflows:
         # media_kit (reproductor del vivo en iOS) va por CocoaPods: se genera
         # el Podfile y se instalan los pods antes de configurar la firma,
         # para que use-profiles vea el proyecto ya integrado.
-        script: flutter build ios --config-only --release -t lib/main_canal7.dart
+        # --no-codesign: los certificados se instalan recién en los pasos
+        # siguientes; sin esto falla buscando uno de desarrollo.
+        script: flutter build ios --config-only --no-codesign --release -t lib/main_canal7.dart
       - name: Inicializar keychain
         script: keychain initialize
       - name: Obtener certificado y perfil de distribución
