@@ -657,6 +657,7 @@ class _LiveChannelState extends State<_LiveChannel> {
         return _PlayerPlaceholder(
           icon: Icons.wifi_tethering_rounded,
           message: 'Reconectando con la transmisión…',
+          detail: _playback!.lastProblem,
           onRetry: _playback!.retryNow,
         );
       }
@@ -699,17 +700,24 @@ class _PlayerPlaceholder extends StatelessWidget {
   const _PlayerPlaceholder({
     required this.icon,
     required this.message,
+    this.detail,
     this.onRetry,
   });
 
   final IconData icon;
   final String message;
+
+  /// Texto técnico chico bajo el mensaje (motivo de la reconexión).
+  final String? detail;
   final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(28),
+      // Con el detalle no entra en la altura del video con el padding de 28.
+      padding: detail == null
+          ? const EdgeInsets.all(28)
+          : const EdgeInsets.symmetric(horizontal: 28, vertical: 6),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -728,6 +736,16 @@ class _PlayerPlaceholder extends StatelessWidget {
             textAlign: TextAlign.center,
             style: const TextStyle(color: Colors.white70, height: 1.4),
           ),
+          if (detail != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              detail!,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.white38, fontSize: 11),
+            ),
+          ],
           if (onRetry != null) ...[
             const SizedBox(height: 16),
             OutlinedButton.icon(

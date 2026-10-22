@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 
 /// Reproducción en vivo que no se queda colgada. `VideoPlayerController`
@@ -39,7 +40,11 @@ class LivePlaybackController extends ChangeNotifier {
   // [_liveOffset] del borde en vivo.
   static const _maxLiveLag = Duration(seconds: 70);
   static const _liveOffset = Duration(seconds: 30);
+  // En iOS (ver [_keepNearLiveEdgeByClock]): 25 s de inicio + 40 s ≈ los
+  // 70 s de [_maxLiveLag], lejos de los segmentos borrados (~140 s).
+  static const _maxClockDrift = Duration(seconds: 40);
   int _lagLogTicks = 0;
+  ({Duration position, Stopwatch clock})? _clockAnchor;
 
   final VideoViewType viewType;
   String _url;
@@ -55,6 +60,10 @@ class LivePlaybackController extends ChangeNotifier {
 
   /// Controller listo para mostrar, o null mientras conecta/reconecta.
   VideoPlayerController? get video => _video;
+
+  /// Por qué se reconectó la última vez. Se muestra en chico bajo
+  /// "Reconectando…": sin una Mac no hay otra forma de ver qué falla en iOS.
+  String? lastProblem;
 
   /// true cuando hubo al menos un fallo y está esperando para reintentar.
   bool get isReconnecting => _retryTimer?.isActive ?? false;
@@ -104,17 +113,26 @@ class LivePlaybackController extends ChangeNotifier {
       _watchdog ??= Timer.periodic(_watchdogInterval, (_) => _checkStall());
     } catch (e) {
       debugPrint('LivePlayback: fallo al conectar ($e)');
+      lastProblem = 'Al conectar: ${_describe(e)}';
       await controller.dispose();
       if (_disposed || generation != _generation) return;
       _scheduleRetry();
     }
   }
 
+  static String _describe(Object e) => switch (e) {
+        TimeoutException() => 'sin respuesta en ${_initTimeout.inSeconds} s',
+        PlatformException(:final code, :final message) =>
+          '$code ${message ?? ''}',
+        _ => '$e',
+      };
+
   void _onVideoEvent() {
     final video = _video;
     if (video == null || !video.value.hasError) return;
     debugPrint('LivePlayback: error en reproducción '
         '(${video.value.errorDescription})');
+    lastProblem = 'Reproduciendo: ${video.value.errorDescription}';
     _scheduleRetry();
   }
 
@@ -135,6 +153,8 @@ class LivePlaybackController extends ChangeNotifier {
           : _stallTicksBeforeReconnect;
       if (_stallTicks >= limit) {
         debugPrint('LivePlayback: video congelado, reconectando');
+        lastProblem = 'Video detenido en ${value.position.inSeconds} s '
+            '(${value.isBuffering ? 'cargando' : 'sin cargar'})';
         _scheduleRetry(immediate: true);
       }
     } else {
@@ -145,6 +165,10 @@ class LivePlaybackController extends ChangeNotifier {
 
   void _keepNearLiveEdge(VideoPlayerController video) {
     final window = video.value.duration;
+    if (window == Duration.zero) {
+      _keepNearLiveEdgeByClock(video);
+      return;
+    }
     // Sin ventana conocida (no es un vivo HLS o todavía no la informó).
     if (window <= _maxLiveLag + _liveOffset) return;
     final lag = window - video.value.position;
@@ -155,6 +179,35 @@ class LivePlaybackController extends ChangeNotifier {
     if (lag > _maxLiveLag) {
       debugPrint('LivePlayback: atrasado ${lag.inSeconds}s, vuelvo al vivo');
       video.seekTo(window - _liveOffset);
+      _resetStall();
+    }
+  }
+
+  /// iOS informa duración 0 en un vivo, así que no se sabe dónde está el
+  /// borde. Se mide el atraso acumulado con el reloj: cada pausa de carga
+  /// suma lo que pasó en tiempo real menos lo que avanzó el video. AVPlayer
+  /// arranca ~25 s detrás del vivo (3 segmentos); si además se atrasó
+  /// [_maxClockDrift], se adelanta eso mismo antes de que llegue a los
+  /// segmentos que el servidor ya borró.
+  void _keepNearLiveEdgeByClock(VideoPlayerController video) {
+    final position = video.value.position;
+    // Recién conectado o recién movido: todavía no hay posición confiable.
+    if (position == Duration.zero) return;
+    final anchor = _clockAnchor;
+    if (anchor == null) {
+      _clockAnchor = (position: position, clock: Stopwatch()..start());
+      return;
+    }
+    final drift = anchor.clock.elapsed - (position - anchor.position);
+    if (++_lagLogTicks % 15 == 0) {
+      debugPrint('LivePlayback: atraso acumulado ${drift.inSeconds}s');
+    }
+    if (drift > _maxClockDrift) {
+      debugPrint('LivePlayback: atrasado ${drift.inSeconds}s, vuelvo al vivo');
+      // Un margen menos por si la medición se pasa: más allá del borde
+      // AVPlayer se queda esperando.
+      video.seekTo(position + drift - const Duration(seconds: 5));
+      _clockAnchor = null;
       _resetStall();
     }
   }
@@ -176,6 +229,7 @@ class LivePlaybackController extends ChangeNotifier {
   void _swapVideo(VideoPlayerController? next) {
     final old = _video;
     _video = next;
+    _clockAnchor = null;
     notifyListeners();
     if (old != null) {
       old.removeListener(_onVideoEvent);
