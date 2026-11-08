@@ -1,7 +1,7 @@
 name: viewer_app
 description: "App de CCTV CANAL 7 (celular y Android TV): señal en vivo y noticias del canal."
 publish_to: 'none'
-version: 1.0.1+2
+version: 1.0.2+3
 
 environment:
   sdk: ^3.13.5
