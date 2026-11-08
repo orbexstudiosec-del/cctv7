@@ -105,8 +105,94 @@ class IosLivePlayerState extends State<IosLivePlayer> {
     super.dispose();
   }
 
+  /// Pausar atrasa el vivo; al reanudar se reabre la señal para volver al
+  /// borde en vivo en vez de seguir desde donde quedó.
+  void _togglePlay() {
+    if (_player.state.playing) {
+      _player.pause();
+    } else {
+      _open();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Video(key: _videoKey, controller: _controller);
+    // Es un vivo: sin barra de progreso ni gestos para adelantar o retroceder.
+    final playButton = _LivePlayButton(
+      playing: _player.stream.playing,
+      initial: _player.state.playing,
+      onPressed: _togglePlay,
+    );
+    final normal = MaterialVideoControlsThemeData(
+      displaySeekBar: false,
+      automaticallyImplySkipNextButton: false,
+      automaticallyImplySkipPreviousButton: false,
+      seekGesture: false,
+      seekOnDoubleTap: false,
+      primaryButtonBar: [const Spacer(), playButton, const Spacer()],
+      bottomButtonBar: const [
+        _LiveBadge(),
+        Spacer(),
+        MaterialFullscreenButton(),
+      ],
+    );
+    final fullscreen = normal.copyWith(
+      bottomButtonBarMargin:
+          const EdgeInsets.only(left: 16, right: 8, bottom: 42),
+    );
+    return MaterialVideoControlsTheme(
+      normal: normal,
+      fullscreen: fullscreen,
+      child: Video(key: _videoKey, controller: _controller),
+    );
+  }
+}
+
+class _LivePlayButton extends StatelessWidget {
+  const _LivePlayButton({
+    required this.playing,
+    required this.initial,
+    required this.onPressed,
+  });
+
+  final Stream<bool> playing;
+  final bool initial;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<bool>(
+      stream: playing,
+      initialData: initial,
+      builder: (context, snapshot) => IconButton(
+        iconSize: 48,
+        color: Colors.white,
+        onPressed: onPressed,
+        icon: Icon(snapshot.data == true ? Icons.pause : Icons.play_arrow),
+      ),
+    );
+  }
+}
+
+class _LiveBadge extends StatelessWidget {
+  const _LiveBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.red,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: const Text(
+        'EN VIVO',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
   }
 }
